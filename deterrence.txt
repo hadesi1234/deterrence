@@ -1,0 +1,292 @@
+
+	public static void evolve()                            
+	{	
+		int i;		
+
+        	play();
+		frequenciesandupdate();	
+	}
+	
+	/*************************************************************************************************************/
+	/*************************************************************************************************************/
+	/*************************************************************************************************************/
+	public static void initialize()
+	{
+		int i,j,k,index;
+        int [] friendsindex1; 
+		double r,sum;
+		
+		rd.setSeed(rand.nextInt());
+		//rd.setSeed(counter++);
+	    
+        POPSIZE=NEWPOPSIZE;
+        FRIENDS=NEWFRIENDS;
+
+		round=1;
+
+
+        /************** initializing aggessors ******/   
+		for(i=0;i<POPSIZE;i++)
+		{	
+			r=rd.nextDouble();
+			for(k=0;k<STRATEGYNUMBERA;k++)
+			{
+				if(r<STARTFREQUA[k])
+				{
+					agg[i] = new Aggressor(k);
+					break;
+				}
+			}
+  
+            if(FRIENDS<POPSIZE)   
+        	{
+            	for(j=0;j<POPSIZE;j++) friendsindex1[j]=j;
+                for(j=0;j<FRIENDS;j++) /*determine friends */
+        		{
+        			index=rd.nextInt(POPSIZE-j);
+                    friendsAindex[i][j]=friendsindex1[index];
+        
+                    friendsindex1[index]=friendsindex1[POPSIZE-j-1];		
+        		}
+            }
+		}
+    
+        /************** initializing victims *****/
+        for(i=0;i<POPSIZE;i++)
+		{	
+            r=rd.nextDouble();
+           
+			for(k=0;k<STRATEGYNUMBERV;k++)
+			{
+				if(r<STARTFREQUV[k])
+				{
+					vic[i] = new Victim(k);
+					break;
+				}
+			}
+            if(EMPIRICALQ!=1)
+                for(k=0;k<MEMORY;k++)
+                {
+                    vicimages[i][k]=NOINFO;
+                }
+
+            if(FRIENDS<POPSIZE)   
+        	{
+            	for(j=0;j<POPSIZE;j++) friendsindex1[j]=j;
+                for(j=0;j<FRIENDS;j++) /*determine friends */
+        		{
+        			index=rd.nextInt(POPSIZE-j);
+                    friendsVindex[i][j]=friendsindex1[index];
+        
+                    friendsindex1[index]=friendsindex1[POPSIZE-j-1];		
+        		}
+            }
+		}
+		
+		for(i=0;i<LISTLENGTH;i++)
+		{
+			for(j=0;j<STRATEGYNUMBERA;j++)
+			{
+				stratevolA[j][i]=0;
+				payevolA[j][i]=0;
+			}
+		}
+
+        for(i=0;i<LISTLENGTH;i++)
+		{
+			for(j=0;j<STRATEGYNUMBERV;j++)
+			{
+				stratevolV[j][i]=0;
+				payevolV[j][i]=0;
+                yieldimgevolV[j][i]=0;
+                fightimgevolV[j][i]=0;
+			}
+		}
+		
+	}
+	
+
+/*************************************************************************************************************/
+	/*************************************************************************************************************/
+	/*************************************************************************************************************/
+	public static void play()
+	{
+		int j,k,index,randomint,actionA=-1,actionV=-1,eecount=0,edcount=0;
+        double random;
+		int [] playerindex1 = new int[POPSIZE];
+        int [] playerindex = new int[POPSIZE];
+        
+       
+
+        for(j=0;j<POPSIZE;j++) playerindex1[j]=j;
+        
+		for(j=0;j<POPSIZE;j++)
+		{
+			index=rd.nextInt(POPSIZE-j);
+            playerindex[j]=playerindex1[index];
+
+            playerindex1[index]=playerindex1[POPSIZE-j-1];		
+		}
+        
+		for(j=0;j<POPSIZE;j++) /**** old payoffs are discounted ***/
+		{
+            k=playerindex[j];
+            agg[k].discountPayoff(DISCOUNTRATE);
+            vic[j].discountPayoff(DISCOUNTRATE);
+            
+            if(agg[k].getStrategy()==1) eecount++;
+            if(agg[k].getStrategy()==3) edcount++;
+                       
+            
+           if(EMPIRICALQ!=1) actionA=agg[k].action(observe(j)); /* actionA is determined */
+           else actionA=agg[k].action(vic[j].getImage()); /* actionA is determined */
+            
+            if(ACTIONAERROR>0 && rd.nextDouble() < ACTIONAERROR) /* aggressor does the opposite from what he should do with prob ACTIONAERROR */
+            {
+                if(actionA == ENTER) actionA = DONT;
+                else actionA = ENTER;
+            }
+            
+            
+            if(actionA==ENTER)
+            {
+                enterrate++;
+                if(agg[k].getStrategy()==3) edenterrate++;
+                randomint=rd.nextInt(STRATEGYNUMBERV-1); /* zufallszahl zwischen 0 und strategynumber -2 */
+                
+                if(randomint<vic[j].getStrategy()) actionV=YIELD;
+                    
+                else actionV=FIGHT;    
+            
+                if(ACTIONVERROR>0 && rd.nextDouble() < ACTIONVERROR) /* enteree does the opposite from what he should do with prob ACTIONVERROR */
+                {
+                    if(actionV == YIELD) actionV = FIGHT;
+                    else actionV = YIELD;
+                }
+                
+                if(actionV==YIELD)
+                {
+                    yieldrate++;
+                    agg[k].addPayoff(T);
+                    vic[j].addPayoff(0);
+                    if(IMAGEERROR>0 && rd.nextDouble() < IMAGEERROR) vic[j].setImage(FIGHT); /* victim gets a wrong image */
+                    else vic[j].setImage(YIELD);
+                    if(agg[k].getStrategy()==1) eeyieldrate++;
+                    else if(agg[k].getStrategy()==3) edenteryieldrate++;
+                  
+                }
+                if(actionV==FIGHT)
+                {
+                    agg[k].addPayoff(S);
+                    vic[j].addPayoff(S);
+                    if(IMAGEERROR>0 && rd.nextDouble() < IMAGEERROR) vic[j].setImage(YIELD); /* victim gets a wrong image */
+                    else vic[j].setImage(FIGHT);
+                }   
+                
+                 /* lists of images of victim is updated, but only if the victim made an action */
+                if(EMPIRICALQ!=1)
+                {
+                    System.arraycopy(vicimages[j],0,vicimages[j],1,MEMORY-1);
+        		    vicimages[j][0]=vic[j].getImage();            
+                }    
+            }
+            if(actionA==DONT)
+            {
+                agg[k].addPayoff(0);
+                vic[j].addPayoff(T);
+            }
+            /**** pay costs for images ***/
+           
+            agg[k].paycosts(C);
+             
+        }
+        
+        if(enterrate > 0 ) yieldrate /= enterrate; else yieldrate = 0.5;
+        if(eecount > 0 ) eeyieldrate /= eecount;
+        if(edenterrate > 0 ) edenteryieldrate /= edenterrate;
+        if(edcount > 0 ) edenterrate /= edcount; 
+        
+        enterrate /= (double)POPSIZE;
+
+	}
+
+	
+	/*************************************************************************************************************/
+	/*************************************************************************************************************/
+	/*************************************************************************************************************/
+
+	public static void frequenciesandupdate()
+	{
+        
+            /******** now update aggressors ******/
+                
+    		for(j=0;j<POPSIZE;j++)
+            {
+                random=rd.nextDouble();
+                
+                if(random<MUTATIONPROB)
+                {
+                    
+                    random2=rd.nextDouble();
+                   
+                    for(k=0;k<STRATEGYNUMBERA;k++)
+                    {
+                        if(random2 < MUTFREQUA[k])
+                        {
+                            agg[j].setStrategy(k);
+                            break;	
+                        }
+                    }
+                }
+                else if(random<UPDATEPROB+MUTATIONPROB)
+                {
+                    
+                    randomint=rd.nextInt(POPSIZE-1); /* ergibt zufallszahl von 0 bis pop-2 */
+                    if(randomint>= j) randomint++;
+                    
+                    if(agg[j].getPayoff() < agg[randomint].getPayoff())
+                    {
+                        agg[j].setStrategy(agg[randomint].getStrategy());
+                    }
+                }
+            }
+            /******** now update victims ******/
+            sum=0;
+              
+    		for(j=0;j<POPSIZE;j++)
+            {
+                random=rd.nextDouble();
+                
+                if(random<MUTATIONPROB)
+                {
+                    
+                    random2=rd.nextDouble();
+                   
+                    for(k=0;k<STRATEGYNUMBERV;k++)
+                    {
+                        if(random2 < MUTFREQUV[k])
+                        {
+                            vic[j].setStrategy(k);
+                            break;	
+                        }
+                    }
+                }
+                else if(random<UPDATEPROB+MUTATIONPROB)
+                {
+                    
+                    randomint=rd.nextInt(POPSIZE-1); /* ergibt zufallszahl von 0 bis pop-2 */
+                    if(randomint>= j) randomint++; /*individuum wählt sich nicht selbst aus */
+                    
+                    if(vic[j].getPayoff() < vic[randomint].getPayoff())
+                    {
+                        vic[j].setStrategy(vic[randomint].getStrategy());
+                    }
+                }
+            }
+         }    
+                   
+      
+        round++;           
+	}
+   
+
