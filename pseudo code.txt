@@ -1,0 +1,35 @@
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+/* this is a pseudo code for the deterrence game */
+
+	/******** initialize **********/
+	initialize N agents with each a challenger role and a defender role
+	initialize challengers with random strategy;
+	initialize defenders with random strategy;
+	determine random group of friends for each agent;
+
+	set round to 1;
+	set payoffs to 0
+
+
+	/******play***********/
+	for (rounds < maxrounds)
+		
+		match all agents in random pairs
+		
+		for each pair
+			discount olf payoffs
+			agents commit implementation error and play wrong action with small probability eps
+			play
+			add new payoff to old payoff
+			set image of defenders to action taken (last action scheme)
+			add information about action taken to the memory of length k about past actions (memory lentgh k scheme)
+			information of defender's image is set to wrong image with probabiity delta
+			
+		for each agent
+			compare own payoff to group of friends and imitate the strategy with maximal average empirical wealth within group of friends with small probability u
+			agents switch to random new strategy with small probability mu
+		
+    		round ++
